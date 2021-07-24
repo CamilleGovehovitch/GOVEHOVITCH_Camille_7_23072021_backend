@@ -7,6 +7,7 @@ const mysqlConnection = require('../connection/connection-db');
 const topicsController = require('../controllers/topicsController');
 
 router.get('/', topicsController.getTopics);
+router.get('/:id', topicsController.getTopic);
 router.post('/', topicsController.createTopic);
 router.put('/:id', topicsController.modifyTopic);
 router.delete('/:id', topicsController.deleteTopic);
