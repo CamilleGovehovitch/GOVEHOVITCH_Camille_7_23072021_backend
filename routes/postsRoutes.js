@@ -23,7 +23,7 @@ router.put('/:id/edit', auth, postsController.modifyPost);
 router.delete('/:id', auth, postsController.deletePost);
 
 //Post-response Routes et Controllers
-router.post('/:id/new', postsController.responsePost);
+router.post('/:id/new', responsesController.createResponse);
 
 //Likes Dislikes Routes et Controllers
 router.post('/:id/like', auth, postsController.like);
