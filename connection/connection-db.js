@@ -17,13 +17,4 @@ mysqlConnection.connect((err) => {
   }
 });
 
-
-// db.query(
-//   'SELECT * FROM `Animal` ',
-//   function(err, results, fields) {
-//     console.log(results, 'RESULT'); // results contains rows returned by server
-//     console.log(fields, 'FIELDS'); // fields contains extra meta data about results, if available
-//   }
-// );
-
 module.exports = mysqlConnection; 
