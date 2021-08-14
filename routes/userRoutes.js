@@ -2,9 +2,6 @@ const express = require('express');
 
 const router = express.Router();
 
-//Connestion My Sql
-const mysqlConnection = require('../connection/connection-db');
-
 //Authentification
 const auth = require('../middlewares/auth');
 

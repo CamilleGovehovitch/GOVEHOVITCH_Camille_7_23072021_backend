@@ -1,8 +1,5 @@
 const mysql = require('mysql2');
 
-//Connection My Sql
-const mysqlConnection = require('../connection/connection-db');
-
 //Models
 const models = require('../models');
 
