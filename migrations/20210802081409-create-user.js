@@ -29,6 +29,10 @@ module.exports = {
         type: Sequelize.BOOLEAN,
         allowNull: false
       },
+      attachement: {
+        type: Sequelize.STRING,
+        allowNull: true
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE

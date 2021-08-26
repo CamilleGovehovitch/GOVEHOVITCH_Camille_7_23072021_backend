@@ -11,21 +11,11 @@ module.exports = (sequelize, DataTypes) => {
      */
      static associate(models) {
       // define association here
-      models.User.belongsToMany(models.Post, {
-        through: 'UserDislikes',
-        foreignKey: 'userId',
-        otherKey: 'postId'
-      });
-      models.Post.belongsToMany(models.User, {
-        through: 'UserDislikes',
-        foreignKey: 'postId',
-        otherKey: 'userId'
-      });
-      models.UserDislikes.belongsTo(models.User, {
+      this.user = models.UserDislikes.belongsTo(models.User, {
         foreignKey: 'userId',
         as: 'user'
       });
-      models.UserDislikes.belongsTo(models.Post, {
+      this.post = models.UserDislikes.belongsTo(models.Post, {
         foreignKey: 'postId',
         as: 'post'
       });

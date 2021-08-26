@@ -11,35 +11,25 @@ module.exports = (sequelize, DataTypes) => {
      */
      static associate(models) {
       // define association here
-      models.User.belongsToMany(models.Post, {
-        through: 'UserLikes',
-        foreignKey: 'userId',
-        otherKey: 'postId'
-      });
-      models.Post.belongsToMany(models.User, {
-        through: 'UserLikes',
-        foreignKey: 'postId',
-        otherKey: 'userId'
-      });
-      models.UserLikes.belongsTo(models.User, {
+      this.user = models.UserLikes.belongsTo(models.User, {
         foreignKey: 'userId',
         as: 'user'
       });
-      models.UserLikes.belongsTo(models.Post, {
+      this.post = models.UserLikes.belongsTo(models.Post, {
         foreignKey: 'postId',
         as: 'post'
       });
     }
   };
   UserLikes.init({
-    post_id: {
+    postId: {
       type: DataTypes.INTEGER,
       references: {
         model: 'Post',
         key: 'id'
       }
     },
-    user_id: {
+    userId: {
       type: DataTypes.INTEGER,
         references: {
           model: 'User',
