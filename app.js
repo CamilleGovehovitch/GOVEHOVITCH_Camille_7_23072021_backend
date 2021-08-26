@@ -1,7 +1,7 @@
 const express = require("express");
 const path = require("path");
 
-const bodyParser = require("body-parser");
+// const bodyParser = require("body-parser");
 
 //Appel des variables d'environnement
 const dotEnv = require("dotenv").config();
@@ -20,6 +20,8 @@ const userRoutes = require("./routes/userRoutes");
 //Application express
 const app = express();
 app.use(express.json());
+// app.use(express.urlencoded());
+
 
 //Helmet sécurisation
 app.use(helmet());
@@ -38,7 +40,6 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
 
 app.use("/images", express.static(path.join(__dirname, "images")));
 app.use("/api/user", userRoutes);
