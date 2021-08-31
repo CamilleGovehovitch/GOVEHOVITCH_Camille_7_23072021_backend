@@ -10,15 +10,22 @@ module.exports = (sequelize, DataTypes) => {
 
     static associate(models) {
       // define association here
-      models.Post.belongsTo(models.Post, {
-        foreignKey: {
-          allowNull: true,
-        },
+      // models.Post.belongsTo(models.Post, {
+      //   foreignKey: {
+      //     allowNull: true,
+      //   }, 
+      // });
+      this.user = models.Post.belongsTo(models.User, {
+        foreignKey: 'userId',
+        as: 'user'
       });
-      models.Post.belongsTo(models.User, {
-        foreignKey: {
-          allowNull: false,
-        },
+      this.likes = models.Post.hasMany(models.UserLikes, {
+        foreignKey: 'postId',
+        as: 'likes'
+      });
+      this.dislikes = models.Post.hasMany(models.UserDislikes, {
+        foreignKey: 'postId',
+        as: 'dislikes'
       });
     }
   }

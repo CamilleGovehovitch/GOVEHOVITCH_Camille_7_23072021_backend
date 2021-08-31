@@ -10,7 +10,6 @@ const multer = require("../middlewares/multer-config");
 
 //Controllers
 const postsController = require("../controllers/postsController");
-const responsesController = require("../controllers/responsesController");
 
 //Posts Routes et Controllers
 router.get("/", auth, postsController.getPosts);
@@ -19,15 +18,12 @@ router.post("/new", auth, multer, postsController.createPost);
 router.put("/:id/edit", auth, multer, postsController.modifyPost);
 router.delete("/:id", auth, postsController.deletePost);
 
-//Post-response Routes et Controllers
-router.post("/:id/new", responsesController.createResponse);
-
 //Likes Dislikes Routes et Controllers
+router.get("/:id/like", auth, postsController.countLikes);
 router.post("/:id/like", auth, postsController.like);
 router.delete("/:id/like", auth, postsController.unlike);
+router.get("/:id/dislike", auth, postsController.countDislikes);
 router.post("/:id/dislike", auth, postsController.dislike);
 router.delete("/:id/dislike", auth, postsController.undislike);
-
-router.get("/:id", responsesController.getResponses);
 
 module.exports = router;
