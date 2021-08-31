@@ -1,8 +1,5 @@
 const mysql = require("mysql2");
 
-//Connection My Sql
-const mysqlConnection = require("../connection/connection-db");
-
 //Models
 const models = require("../models");
 
@@ -34,13 +31,14 @@ exports.signUp = (req, res, next) => {
   const email = req.body.email;
   const password = req.body.password;
   const bio = req.body.bio;
-  const username = req.body.username;
+  // const username = req.body.username;
+  const defaultProfilePicture = 'http://localhost:3000/images/balancoire.png1630014597273.png'
 
   //Masked params
   const emailMasked = Maskdata.maskEmail2(req.body.email, emailMask2Options);
   const passwordStrengthTested = passwordStrength(req.body.password).value;
 
-  if (email === null || password === null || username === null) {
+  if (email === null || password === null) {
     return res.status(400).json({ error: "Missing Parameters" });
   }
   if (!email.match(emailRegex)) {
@@ -60,9 +58,9 @@ exports.signUp = (req, res, next) => {
         bcrypt.hash(password, 10, (err, bcryptedPassword) => {
           let newUser = models.User.create({
             email: emailMasked,
-            username: username,
             password: bcryptedPassword,
             bio: bio,
+            attachement: defaultProfilePicture,
             is_admin: 0,
           })
             .then(function(newUser) {
@@ -205,7 +203,7 @@ exports.getUserProfile = (req, res, next) => {
   //Récupération du userId
   const user = getUserFromToken(req);
   models.User.findOne({
-    attributes: ["id", "email", "username", "bio", "createdAt", "updatedAt", "is_admin"],
+    attributes: ["id", "email", "username", "bio", "createdAt", "updatedAt", "is_admin", "attachement"],
     where: { id: user.user_id },
   })
     .then((userFound) => {
