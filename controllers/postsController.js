@@ -35,7 +35,7 @@ exports.getPost = (req, res, next) => {
       return res.status(200).json({
         postFound: postFound,
         likes: likes,
-        dislikes: dislikes
+        dislikes: dislikes,
       });
     })
     .catch((error) => {
@@ -132,33 +132,100 @@ exports.modifyPost = (req, res, next) => {
 //Delete post
 exports.deletePost = (req, res, next) => {
   const postId = req.params.id;
-
-  models.Post.findOne({
-    attributes: ["id", "attachement"],
-    where: { id: postId },
+  const user = getUserFromToken(req);
+  models.User.findOne({
+    attibutes: ["id", "is_admin"],
+    where: { id: user.user_id },
   })
-    .then((postFound) => {
-      const filename = postFound.attachement.split("/images/")[1];
-
-      fs.unlink(`images/${filename}`, () => {
-        postFound
-          .destroy({
-            where: { id: postFound.id },
-          })
-          .then(() => {
-            console.log("POST DELETED");
-            return res.status(200).json({ message: "Le Post à été supprimé avec succès" });
+    .then((adminFound) => {
+      console.log(adminFound);
+      if (adminFound.is_admin === true) {
+        models.UserLikes.findOne({
+          attributes: ["id"],
+          where: { postId: postId },
+        })
+          .then((userLikeFound) => {
+            console.log(userLikeFound);
+            userLikeFound
+              .destroy({
+                where: { id: userLikeFound.id },
+              })
+              .then(() => {
+                models.UserDislikes.findOne({
+                  attributes: ["id"],
+                  where: { postId: postId },
+                })
+                  .then((userDislikFound) => {
+                    console.log(userDislikFound);
+                    userDislikFound
+                      .destroy({
+                        where: { id: userDislikFound.id },
+                      })
+                      .then(() => {
+                        models.Post.findOne({
+                          attributes: ["id"],
+                          where: { id: postId },
+                        })
+                          .then((postFound) => {
+                            postFound.destroy({
+                              where: { id: postId },
+                            })
+                            .then(() => {
+                              return res.status(200).json({message: 'ok'})
+                            })
+                            .catch((error) => {
+                              console.log(error);
+                            })
+                          })
+                          .catch((error) => {
+                            console.log(error);
+                          });
+                      })
+                      .catch((error) => {
+                        console.log(error);
+                      });
+                  })
+                  .catch((error) => {
+                    console.log(error);
+                  });
+              });
           })
           .catch((error) => {
             console.log(error);
-            return res.status(500).json({ error: "Le post n'a pu être supprimé" });
           });
-      });
+      }
     })
     .catch((error) => {
       console.log(error);
-      return res.status(400).json({ error: "Le post n'a pas été trouvé" });
+      return res.status(404).json(generateErrorMessage("Admin non trouvé"));
     });
+
+  // models.Post.findOne({
+  //   attributes: ["id", "attachement"],
+  //   where: { id: postId },
+  // })
+  //   .then((postFound) => {
+  //     const filename = postFound.attachement.split("/images/")[1];
+
+  //     fs.unlink(`images/${filename}`, () => {
+  //       postFound
+  //         .destroy({
+  //           where: { id: postFound.id },
+  //         })
+  //         .then(() => {
+  //           console.log("POST DELETED");
+  //           return res.status(200).json({ message: "Le Post à été supprimé avec succès" });
+  //         })
+  //         .catch((error) => {
+  //           console.log(error);
+  //           return res.status(500).json({ error: "Le post n'a pu être supprimé" });
+  //         });
+  //     });
+  //   })
+  //   .catch((error) => {
+  //     console.log(error);
+  //     return res.status(400).json({ error: "Le post n'a pas été trouvé" });
+  //   });
 };
 
 //Get all posts
@@ -184,8 +251,8 @@ exports.getPosts = (req, res, next) => {
       { model: models.UserDislikes, as: "dislikes" },
     ],
   })
-    .then((posts) => { 
-      return res.status(200).json(posts)
+    .then((posts) => {
+      return res.status(200).json(posts);
     })
     .catch((error) => {
       console.log(error);
