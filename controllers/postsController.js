@@ -167,31 +167,43 @@ exports.deletePost = (req, res, next) => {
                           where: { id: postId },
                         })
                           .then((postFound) => {
-                            postFound.destroy({
-                              where: { id: postId },
-                            })
-                            .then(() => {
-                              return res.status(200).json({message: 'ok'})
-                            })
-                            .catch((error) => {
-                              console.log(error);
-                            })
+                            postFound
+                              .destroy({
+                                where: { id: postId },
+                              })
+                              .then(() => {
+                                return res.status(200).json({ message: "succefully deleted" });
+                              })
+                              .catch((error) => {
+                                console.log(error);
+                                return res.status(400).json(generateErrorMessage("Une erreur est survenue lors de la suppréssion"));
+
+                              });
                           })
                           .catch((error) => {
                             console.log(error);
+                            return res.status(404).json(generateErrorMessage("Post non trouvé"));
+
                           });
                       })
                       .catch((error) => {
                         console.log(error);
+                        return res.status(400).json(generateErrorMessage("Une erreur est survenue lors de la suppréssion"));
                       });
                   })
                   .catch((error) => {
                     console.log(error);
+                    return res.status(404).json(generateErrorMessage("Disike non trouvé"));
                   });
+              })
+              .catch((error) => {
+                console.log(error);
+                return res.status(404).json(generateErrorMessage("Une erreur est survenue lors de la suppréssion"));
               });
           })
           .catch((error) => {
             console.log(error);
+            return res.status(404).json(generateErrorMessage("Like non trouvé"));
           });
       }
     })
