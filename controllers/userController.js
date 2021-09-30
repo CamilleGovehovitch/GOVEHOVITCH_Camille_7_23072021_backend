@@ -13,6 +13,33 @@ const jwt = require("jsonwebtoken");
 
 //Check password strength
 const { passwordStrength } = require("check-password-strength");
+//Custom options password strengh
+const customOptions = [
+  {
+    id: 0,
+    value: "trop faible",
+    minDiversity: 0,
+    minLength: 0,
+  },
+  {
+    id: 1,
+    value: "faible",
+    minDiversity: 2,
+    minLength: 6,
+  },
+  {
+    id: 2,
+    value: "moyen",
+    minDiversity: 4,
+    minLength: 8,
+  },
+  {
+    id: 3,
+    value: "fort",
+    minDiversity: 4,
+    minLength: 10,
+  },
+];
 
 //Mask Options
 const emailMask2Options = {
@@ -32,11 +59,11 @@ exports.signUp = (req, res, next) => {
   const password = req.body.password;
   const bio = req.body.bio;
   // const username = req.body.username;
-  const defaultProfilePicture = 'http://localhost:3000/images/balancoire.png1630014597273.png'
+  // const defaultProfilePicture = "/images/balancoire.png1630014597273.png";
 
   //Masked params
   const emailMasked = Maskdata.maskEmail2(req.body.email, emailMask2Options);
-  const passwordStrengthTested = passwordStrength(req.body.password).value;
+  const passwordStrengthTested = passwordStrength(req.body.password, customOptions).value;
 
   if (email === null || password === null) {
     return res.status(400).json({ error: "Missing Parameters" });
@@ -45,8 +72,12 @@ exports.signUp = (req, res, next) => {
     console.log("err");
     return res.status(400).json({ error: "Votre email n'a pas la forme requise" });
   }
-  if (passwordStrengthTested !== "Strong") {
-    return res.status(401).json({ message: "password " + passwordStrengthTested });
+  if (passwordStrengthTested !== "fort") {
+    return res.status(422).json({
+      message:
+        "Votre password doit contenir une majuscule un caractère spéciale, un chiffre et au minimum 10 caractères car votre passord est " +
+        passwordStrengthTested,
+    });
   }
 
   models.User.findOne({
@@ -60,7 +91,7 @@ exports.signUp = (req, res, next) => {
             email: emailMasked,
             password: bcryptedPassword,
             bio: bio,
-            attachement: defaultProfilePicture,
+            // attachement: defaultProfilePicture,
             is_admin: 0,
           })
             .then(function(newUser) {
@@ -86,8 +117,8 @@ exports.signUp = (req, res, next) => {
 //Login
 exports.login = (req, res, next) => {
   console.log("hey route login");
-  console.log(req.body, 'BODY REQ');
-  
+  console.log(req.body, "BODY REQ");
+
   const userEmailMasked = Maskdata.maskEmail2(req.body.email, emailMask2Options);
 
   let email = req.body.email;
@@ -106,11 +137,12 @@ exports.login = (req, res, next) => {
         //Bycrypt compare le password de la requete à celui sâlé en bdd avec la même clé
         bcrypt.compare(password, userFound.password, (err, resBcrypt) => {
           console.log("VERIFI MDP");
-          console.log(password, '------' ,userFound.password,);
+          console.log(password, "------", userFound.password);
           console.log(resBcrypt, "BYCRYP");
           if (resBcrypt) {
             return res.status(200).json({
               userId: userFound.id,
+              is_admin: userFound.is_admin,
               token: jwt.sign({ user_id: userFound.id }, process.env.DB_SECRET, { expiresIn: "24h" }, { is_admin: userFound.is_admin }),
             });
           } else {
@@ -130,17 +162,19 @@ exports.login = (req, res, next) => {
 //Edit user
 exports.editProfile = (req, res, next) => {
   console.log("hello EDIT");
-  //Params
+  // Params
   const body = req.body;
-  console.log(body);
+  const username = req.body.username;
+  const bio = req.body.bio;
   delete body.email;
   delete body.password;
   delete body.id;
   delete body.createdAt;
   delete body.updatedAt;
-  const attachement = `${req.protocol}://${req.get("host")}/images/${req.file.filename}`;
-  console.log(req.file, 'REQ');
-  console.log(req.body, 'BODY');
+
+  // const attachement = `${req.protocol}://${req.get("host")}/images/${req.file.filename}`;
+  console.log(req.file);
+
   //Récupération du userId
   const user = getUserFromToken(req);
 
@@ -149,11 +183,12 @@ exports.editProfile = (req, res, next) => {
     where: { id: user.user_id },
   })
     .then((userFound) => {
-      console.log(userFound);
+      console.log(userFound, "USER FOUNDED");
       userFound
         .update({
-          body: body ? body : userFound,
-          attachement: req.file ? attachement : userFound.attachement
+          username: username ? username : userFound.username,
+          bio: bio ? bio : userFound.bio,
+          attachement: req.file ? `${req.protocol}://${req.get("host")}/images/${req.file.filename}` : userFound.attachement,
         })
         .then(() => {
           console.log(userFound);
@@ -170,31 +205,54 @@ exports.editProfile = (req, res, next) => {
 };
 
 //Delete user
-exports.deleteUserProfile = (req, res, next) => {
+exports.deleteUserProfile = async (req, res, next) => {
   console.log("hello delete routes");
+
   //Récupération du userId
   const user = getUserFromToken(req);
-  models.User.findOne({
-    attributes: ["id"],
-    where: { id: user.user_id },
-  })
-    .then((userFound) => {
-      userFound
-        .destroy({
-          where: { id: user.user_id },
-        })
-        .then(() => {
-          return res.status(200).json({ message: "Utilisateur supprimé" });
-        })
-        .catch((error) => {
-          console.log(error);
-          return res.status(500).json(generateErrorMessage("Une erreur est survenue"));
-        });
-    })
-    .catch((error) => {
-      console.log(error);
-      return res.status(404).json(generateErrorMessage("L'utilisateur n'a pas été trouvé"));
+
+  //get user
+  async function getUserFromApi() {
+    return models.User.findOne({
+      where: { id: user.user_id },
     });
+  }
+  //get User Posts
+  async function getUserPostsFromApi() {
+    return models.Post.findAll({
+      where: { userId: user.user_id },
+    });
+  }
+  //get Likes from Post
+  async function getLikesFromPost() {
+    return models.UserLikes.findAll({
+      where: { userId: user.user_id },
+    });
+  }
+  //get Dislikes from Post
+  async function gettDislikesFromPost() {
+    return models.UserDislikes.findAll({
+      where: { userId: user.user_id },
+    });
+  }
+  const userFounded = await getUserFromApi();
+  const userPostsFounded = await getUserPostsFromApi();
+  const likes = await getLikesFromPost();
+  const dislikes = await gettDislikesFromPost();
+
+  if (userFounded) {
+    try {
+      const likeMaped = likes.map(like => like.destroy());
+      const dislikeMaped = dislikes.map(dislike => dislike.destroy());
+      const postMaped = userPostsFounded.map(post => post.destroy());
+      
+      userFounded.destroy();
+      return res.status(200).json({ message: "Suppression de l'utilisateur et de ses posts réussie" });
+    } catch (error) {
+      console.log(error, "[ERROR]");
+      return res.status(400).json(generateErrorMessage("Une erreur est survenue lors de la suppréssion"));
+    }
+  }
 };
 
 //get user via le token et non pas l'id
