@@ -50,6 +50,7 @@ exports.createPost = (req, res, next) => {
   //Body
   const title = req.body.title;
   const content = req.body.content;
+  console.log(title, content, req.file);
 
   //Const Limit
   const TITLE_LIMIT = 2;
@@ -59,33 +60,37 @@ exports.createPost = (req, res, next) => {
   const userId = getUserFromToken(req);
 
   //Test input
-  if (title === null || content === null) {
+  if (title === null) {
     return res.status(400).json({ error: "missing parameters" });
   }
-  if (title.length <= TITLE_LIMIT || content.length <= CONTENT_LIMIT) {
+  if (title.length <= TITLE_LIMIT) {
+    return res.status(400).json({ error: "missing parameters" });
+  }
+  if (content && content.length <= CONTENT_LIMIT) {
     return res.status(400).json({ error: "missing parameters" });
   }
 
   models.User.findOne({
     where: { id: userId.user_id },
   })
-    .then(function(userFound) {
+    .then((userFound) => {
       if (userFound) {
         models.Post.create({
           title: title,
-          content: content,
+          content: content ? content : null,
           userId: userFound.id,
-          attachement: `${req.protocol}://${req.get("host")}/images/${req.file.filename}`,
+          attachement: req.file ? `${req.protocol}://${req.get("host")}/images/${req.file.filename}` : null,
         })
-          .then(function(newPost) {
-            return res.status(200).json({ newPost });
+          .then((newPost) => {
+            return res.status(200).json(newPost);
           })
-          .catch(function(err) {
+          .catch((err) => {
             console.log(err);
           });
       }
     })
-    .catch(function(err) {
+    .catch((error) => {
+      console.log(error);
       return res.status(400).json({ error: USER_NOT_FOUND });
     });
 };
@@ -130,116 +135,68 @@ exports.modifyPost = (req, res, next) => {
 };
 
 //Delete post
-exports.deletePost = (req, res, next) => {
+exports.deletePost = async (req, res, next) => {
   const postId = req.params.id;
   const user = getUserFromToken(req);
-  models.User.findOne({
-    attibutes: ["id", "is_admin"],
-    where: { id: user.user_id },
-  })
-    .then((adminFound) => {
-      console.log(adminFound);
-      if (adminFound.is_admin === true) {
-        models.UserLikes.findOne({
-          attributes: ["id"],
-          where: { postId: postId },
-        })
-          .then((userLikeFound) => {
-            console.log(userLikeFound);
-            userLikeFound
-              .destroy({
-                where: { id: userLikeFound.id },
-              })
-              .then(() => {
-                models.UserDislikes.findOne({
-                  attributes: ["id"],
-                  where: { postId: postId },
-                })
-                  .then((userDislikFound) => {
-                    console.log(userDislikFound);
-                    userDislikFound
-                      .destroy({
-                        where: { id: userDislikFound.id },
-                      })
-                      .then(() => {
-                        models.Post.findOne({
-                          attributes: ["id"],
-                          where: { id: postId },
-                        })
-                          .then((postFound) => {
-                            postFound
-                              .destroy({
-                                where: { id: postId },
-                              })
-                              .then(() => {
-                                return res.status(200).json({ message: "succefully deleted" });
-                              })
-                              .catch((error) => {
-                                console.log(error);
-                                return res.status(400).json(generateErrorMessage("Une erreur est survenue lors de la suppréssion"));
+  const userFounded = await findUser();
+  const postFounded = await findPost();
+  const likesFounded = await findUserLike();
+  const dislikesFounded = await findUserDislike();
 
-                              });
-                          })
-                          .catch((error) => {
-                            console.log(error);
-                            return res.status(404).json(generateErrorMessage("Post non trouvé"));
-
-                          });
-                      })
-                      .catch((error) => {
-                        console.log(error);
-                        return res.status(400).json(generateErrorMessage("Une erreur est survenue lors de la suppréssion"));
-                      });
-                  })
-                  .catch((error) => {
-                    console.log(error);
-                    return res.status(404).json(generateErrorMessage("Disike non trouvé"));
-                  });
-              })
-              .catch((error) => {
-                console.log(error);
-                return res.status(404).json(generateErrorMessage("Une erreur est survenue lors de la suppréssion"));
-              });
-          })
-          .catch((error) => {
-            console.log(error);
-            return res.status(404).json(generateErrorMessage("Like non trouvé"));
-          });
-      }
-    })
-    .catch((error) => {
-      console.log(error);
-      return res.status(404).json(generateErrorMessage("Admin non trouvé"));
+  if (!userFounded.is_admin) {
+    return res.status(401).json(generateErrorMessage("Vous n'êtes pas autorisé à supprimer ce post"));
+  }
+  //si admin OU current user = post user
+  try {
+    if (likesFounded) {
+      console.log(likesFounded, "LIKE FOUNDED");
+      const likesMaped = likesFounded.map((like) =>  like.destroy({
+        where: {postId: postId}
+      }));
+    }
+    if (dislikesFounded) {
+      console.log(dislikesFounded, "DISLIKE FOUNDED");
+      const dislikesMaped = dislikesFounded.map((dislike) =>  dislike.destroy({
+        where: {postId: postId}
+      }));
+    }
+    if (postFounded) {
+      console.log(postFounded, "POST FOUNDED");
+      const postMaped = postFounded.map((post) =>  post.destroy());
+    }
+    return res.status(200).json({ message: "Suppression du post réussie" });
+  } catch (error) {
+    console.log(error);
+    return res.status(400).json(generateErrorMessage("Une erreur est survenue"));
+  }
+  async function findUser() {
+    return models.User.findOne({
+      attributes: ["id", "is_admin"],
+      where: { id: user.user_id },
     });
-
-  // models.Post.findOne({
-  //   attributes: ["id", "attachement"],
-  //   where: { id: postId },
-  // })
-  //   .then((postFound) => {
-  //     const filename = postFound.attachement.split("/images/")[1];
-
-  //     fs.unlink(`images/${filename}`, () => {
-  //       postFound
-  //         .destroy({
-  //           where: { id: postFound.id },
-  //         })
-  //         .then(() => {
-  //           console.log("POST DELETED");
-  //           return res.status(200).json({ message: "Le Post à été supprimé avec succès" });
-  //         })
-  //         .catch((error) => {
-  //           console.log(error);
-  //           return res.status(500).json({ error: "Le post n'a pu être supprimé" });
-  //         });
-  //     });
-  //   })
-  //   .catch((error) => {
-  //     console.log(error);
-  //     return res.status(400).json({ error: "Le post n'a pas été trouvé" });
-  //   });
+  }
+  async function findPost() {
+    const postId = req.params.id;
+    return models.Post.findAll({
+      attributes: ["id"],
+      where: { id: postId },
+    });
+  }
+  async function findUserLike() {
+    const postId = req.params.id;
+    return models.UserLikes.findAll({
+      attributes: ["id", "postId"],
+      where: { postId: postId },
+    });
+  }
+  async function findUserDislike() {
+    const postId = req.params.id;
+    return models.UserDislikes.findAll({
+      attributes: ["id"],
+      where: { postId: postId },
+    });
+  }
 };
-
 //Get all posts
 exports.getPosts = (req, res, next) => {
   console.log("GET TOPICS");
@@ -247,11 +204,14 @@ exports.getPosts = (req, res, next) => {
   // let fields = req.query.fields;
   let limit = parseInt(req.query.limit);
   let offset = parseInt(req.query.offset);
+  console.log(offset, "offset");
+  console.log(limit, "limit");
+
   // count [nombre de post total accessible] / [limite] = nombre de page dispo.
   // feature pour bien pagine le front (optionel)
   // Trouver les trois page disponible avant la page courante (offset) afficher ces 7 pages
 
-  models.Post.findAll({
+  models.Post.findAndCountAll({
     subQuery: false,
     order: [["createdAt", "DESC"]],
     attributes: ["id", "userId", "title", "content", "attachement", "createdAt"],
@@ -264,6 +224,7 @@ exports.getPosts = (req, res, next) => {
     ],
   })
     .then((posts) => {
+      console.log(posts.rows.length);
       return res.status(200).json(posts);
     })
     .catch((error) => {
@@ -399,8 +360,8 @@ exports.dislike = (req, res, next) => {
             userId: user.user_id,
             postId: postId,
           })
-            .then(() => {
-              return res.status(201).json({ message: "post succefully disliked" });
+            .then((userDislike) => {
+              return res.status(201).json(userDislike);
             })
             .catch((error) => {
               console.log(error);
@@ -472,9 +433,6 @@ exports.countLikes = (req, res, next) => {
     where: { id: user.user_id },
   })
     .then((userFound) => {
-      // TODO: Tu devrais pourvoir faire un FindOne de ton post, et ensuite faire post.userLikes.length ou .count par exemple
-      // Et du coup au lieu d'avoir cette route que te devrais appeler pour chaque route, renvois ce chiffre drectement avec le post
-      // Dans la routes Get post
       models.UserLikes.count({
         where: { postId: postId },
       })
