@@ -11,9 +11,9 @@ const multer = require("multer");
 const helmet = require("helmet");
 
 //ROUTES
-const postsRoutes = require("./routes/postsRoutes");
 const userRoutes = require("./routes/userRoutes");
-// const responsesRoutes = require('./routes/responsesRoutes');
+const postsRoutes = require("./routes/postsRoutes");
+const commentRoutes = require("./routes/commentRoutes");
 
 //Application express
 const app = express();
@@ -34,7 +34,7 @@ app.use((req, res, next) => {
 app.use("/images", express.static(path.join(__dirname, "images")));
 app.use("/api/user", userRoutes);
 app.use("/api/post", postsRoutes);
-// app.use('api/responses', responsesRoutes);
+app.use('/api/comment', commentRoutes);
 
 module.exports = app;
 
