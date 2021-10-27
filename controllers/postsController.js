@@ -15,28 +15,22 @@ const USER_NOT_FOUND = "Utilisateur non trouvé";
 
 //Get post
 exports.getPost = (req, res, next) => {
-  console.log("GET POST");
+  console.log("GET ONE POST");
   const postId = req.params.id;
 
   models.Post.findOne({
     attributes: ["id", "title", "content", "attachement"],
-    // order: [sequelize.fn('count', sequelize.col('postId'))],
+    order: [[{ model: models.Comment, as: "comment" }, "createdAt", "DESC"]],
     include: [
       { model: models.User, as: "user" },
       { model: models.UserLikes, as: "likes" },
       { model: models.UserDislikes, as: "dislikes" },
+      { model: models.Comment, as: "comment" },
     ],
     where: { id: postId },
   })
     .then((postFound) => {
-      const likes = postFound.likes.length;
-      const dislikes = postFound.dislikes.length;
-      console.log(likes);
-      return res.status(200).json({
-        postFound: postFound,
-        likes: likes,
-        dislikes: dislikes,
-      });
+      return res.status(200).json(postFound);
     })
     .catch((error) => {
       return res.status(400).json(error);
@@ -45,12 +39,9 @@ exports.getPost = (req, res, next) => {
 
 //Create post
 exports.createPost = (req, res, next) => {
-  console.log("hello post");
-
   //Body
   const title = req.body.title;
   const content = req.body.content;
-  console.log(title, content, req.file);
 
   //Const Limit
   const TITLE_LIMIT = 2;
@@ -61,13 +52,16 @@ exports.createPost = (req, res, next) => {
 
   //Test input
   if (title === null) {
-    return res.status(400).json({ error: "missing parameters" });
+    return res.status(400).json(generateErrorMessage("Le titre ne peut être vide"));
   }
   if (title.length <= TITLE_LIMIT) {
-    return res.status(400).json({ error: "missing parameters" });
+    return res.status(400).json(generateErrorMessage("Le titre ne peut être inférieur à 2 charactères"));
   }
-  if (content && content.length <= CONTENT_LIMIT) {
-    return res.status(400).json({ error: "missing parameters" });
+  if (content === null) {
+    return res.status(400).json(generateErrorMessage("Le content ne peut être vide"));
+  }
+  if (content.length <= CONTENT_LIMIT) {
+    return res.status(400).json(generateErrorMessage("Le contenu ne peut être inférieur à 4 charactères"));
   }
 
   models.User.findOne({
@@ -84,8 +78,8 @@ exports.createPost = (req, res, next) => {
           .then((newPost) => {
             return res.status(200).json(newPost);
           })
-          .catch((err) => {
-            console.log(err);
+          .catch((error) => {
+            console.log(error);
           });
       }
     })
@@ -97,13 +91,9 @@ exports.createPost = (req, res, next) => {
 
 //Modify topic
 exports.modifyPost = (req, res, next) => {
-  console.log("MODIFY POST");
-
   const postId = req.params.id;
   const title = req.body.title;
   const content = req.body.content;
-
-  const attachement = `${req.protocol}://${req.get("host")}/images/${req.file.filename}`;
 
   models.Post.findOne({
     attributes: ["id", "title", "content", "attachement"],
@@ -115,7 +105,7 @@ exports.modifyPost = (req, res, next) => {
           .update({
             title: title ? title : postFound.title,
             content: content ? content : postFound.content,
-            attachement: req.file ? attachement : postFound.attachement,
+            attachement: req.file ? `${req.protocol}://${req.get("host")}/images/${req.file.filename}` : postFound.attachement,
           })
           .then((postUpdated) => {
             return res.status(201).json(postUpdated);
@@ -128,45 +118,49 @@ exports.modifyPost = (req, res, next) => {
         return res.status(400).json(generateErrorMessage("Post non trouvé"));
       }
     })
-    .catch(function(err) {
-      console.log(err);
+    .catch((error) => {
+      console.log(error);
       return res.status(400).json(generateErrorMessage(USER_NOT_FOUND));
     });
 };
 
 //Delete post
 exports.deletePost = async (req, res, next) => {
-  const postId = req.params.id;
   const user = getUserFromToken(req);
   const userFounded = await findUser();
-  const postFounded = await findPost();
   const likesFounded = await findUserLike();
   const dislikesFounded = await findUserDislike();
+  const postFounded = await findPost();
+  const commentFounded = await findComments();
 
   if (!userFounded.is_admin) {
     return res.status(401).json(generateErrorMessage("Vous n'êtes pas autorisé à supprimer ce post"));
   }
-  //si admin OU current user = post user
   try {
-    if (likesFounded) {
-      console.log(likesFounded, "LIKE FOUNDED");
-      const likesMaped = likesFounded.map((like) =>  like.destroy({
-        where: {postId: postId}
-      }));
-    }
-    if (dislikesFounded) {
-      console.log(dislikesFounded, "DISLIKE FOUNDED");
-      const dislikesMaped = dislikesFounded.map((dislike) =>  dislike.destroy({
-        where: {postId: postId}
-      }));
-    }
+    // if (likesFounded) {
+    //   const likesMaped = likesFounded.map((like) => {
+    //     like.destroy();
+    //   });
+    // }
+    // if (dislikesFounded) {
+    //   const dislikesMaped = dislikesFounded.map((dislike) => {
+    //     dislike.destroy();
+    //   });
+    // }
+    // if (commentFounded) {
+    //   const commentMapped = commentFounded.map((comment) => {
+    //     console.log(comment);
+    //     comment.destroy();
+    //   });
+    // }
     if (postFounded) {
-      console.log(postFounded, "POST FOUNDED");
-      const postMaped = postFounded.map((post) =>  post.destroy());
+      // const postMaped = postFounded.map((post) => {
+      //   post.destroy();
+      // });
+      postFounded.destroy();
     }
     return res.status(200).json({ message: "Suppression du post réussie" });
   } catch (error) {
-    console.log(error);
     return res.status(400).json(generateErrorMessage("Une erreur est survenue"));
   }
   async function findUser() {
@@ -177,35 +171,38 @@ exports.deletePost = async (req, res, next) => {
   }
   async function findPost() {
     const postId = req.params.id;
-    return models.Post.findAll({
-      attributes: ["id"],
+    return models.Post.findOne({
+      attributes: ["id", "userId"],
       where: { id: postId },
     });
   }
   async function findUserLike() {
     const postId = req.params.id;
     return models.UserLikes.findAll({
-      attributes: ["id", "postId"],
+      attributes: ["id", "postId", "userId"],
       where: { postId: postId },
     });
   }
   async function findUserDislike() {
     const postId = req.params.id;
     return models.UserDislikes.findAll({
-      attributes: ["id"],
+      attributes: ["id", "postId", "userId"],
+      where: { postId: postId },
+    });
+  }
+  async function findComments() {
+    const postId = req.params.id;
+    console.log(postId);
+    return models.Comment.findAll({
+      attributes: ["id", "postId"],
       where: { postId: postId },
     });
   }
 };
 //Get all posts
 exports.getPosts = (req, res, next) => {
-  console.log("GET TOPICS");
-  //lister les posts, systeme de pagination
-  // let fields = req.query.fields;
   let limit = parseInt(req.query.limit);
   let offset = parseInt(req.query.offset);
-  console.log(offset, "offset");
-  console.log(limit, "limit");
 
   // count [nombre de post total accessible] / [limite] = nombre de page dispo.
   // feature pour bien pagine le front (optionel)
@@ -221,10 +218,10 @@ exports.getPosts = (req, res, next) => {
       { model: models.User, as: "user" },
       { model: models.UserLikes, as: "likes" },
       { model: models.UserDislikes, as: "dislikes" },
+      { model: models.Comment, as: "comment" },
     ],
   })
     .then((posts) => {
-      console.log(posts.rows.length);
       return res.status(200).json(posts);
     })
     .catch((error) => {
@@ -235,7 +232,6 @@ exports.getPosts = (req, res, next) => {
 
 //Like post
 exports.like = (req, res, next) => {
-  console.log("LIKE POST!!!!!!!!!!!!!!!!");
   //User id
   const user = getUserFromToken(req);
   //Post id
@@ -288,7 +284,6 @@ exports.like = (req, res, next) => {
 
 //Unlike posts
 exports.unlike = (req, res, next) => {
-  console.log("UNLIKE POST");
   //User id
   const user = getUserFromToken(req);
   //Post id
@@ -328,7 +323,6 @@ exports.unlike = (req, res, next) => {
 
 //Dislike post
 exports.dislike = (req, res, next) => {
-  console.log("hello dislike ROUTES");
   //User id
   const user = getUserFromToken(req);
   //Post id
@@ -381,13 +375,10 @@ exports.dislike = (req, res, next) => {
 
 //Undislike posts
 exports.undislike = (req, res, next) => {
-  console.log("UNDSILIKE POST");
-
   //User id
   const user = getUserFromToken(req);
   //Post id
   const postId = req.params.id;
-  console.log(postId, user.user_id);
 
   models.UserDislikes.findOne({
     attributes: ["id", "userId", "postId"],
@@ -419,85 +410,6 @@ exports.undislike = (req, res, next) => {
       return res.status(404).json(generateErrorMessage("dislike non trouvé"));
     });
 };
-
-//Count Likes
-exports.countLikes = (req, res, next) => {
-  console.log("hello count");
-  //User id
-  const user = getUserFromToken(req);
-  //Post id
-  const postId = req.params.id;
-
-  models.User.findOne({
-    attributes: ["id"],
-    where: { id: user.user_id },
-  })
-    .then((userFound) => {
-      models.UserLikes.count({
-        where: { postId: postId },
-      })
-        .then((likeCount) => {
-          console.log(likeCount);
-          return res.status(200).json(likeCount);
-        })
-        .catch((error) => {
-          console.log(error);
-          return res.status(500).json(generateErrorMessage("Une erreur est survenue"));
-        });
-    })
-    .catch((error) => {
-      console.log(error);
-      return res.status(404).json(generateErrorMessage("L'utilisateur n'a pas été trouvé"));
-    });
-};
-
-//Count Likes
-exports.countDislikes = (req, res, next) => {
-  console.log("hello count dislikes");
-  //User id
-  const user = getUserFromToken(req);
-  //Post id
-  const postId = req.params.id;
-
-  models.User.findOne({
-    attributes: ["id"],
-    where: { id: user.user_id },
-  })
-    .then((userFound) => {
-      // TODO, comme pour like
-      models.UserDislikes.count({
-        where: { postId: postId },
-      })
-        .then((dislikeCount) => {
-          console.log(dislikeCount);
-          return res.status(200).json(dislikeCount);
-        })
-        .catch((error) => {
-          console.log(error);
-          return res.status(500).json(generateErrorMessage("Il n'y a aucun dislikes sur ce post"));
-        });
-    })
-    .catch((error) => {
-      console.log(error);
-      return res.status(404).json(generateErrorMessage("L'utilisateur n'a pas été trouvé"));
-    });
-};
-
-// function likeCallback(err, data) {
-//   if (!err) {
-//     res.status(201).json({ message: "succefully liked" });
-//   } else {
-//     console.log(err);
-//   }
-// }
-
-// function dislikeCallback(err, data) {
-//   if (!err) {
-//     res.status(201).json({ message: "succefully disliked" });
-//   } else {
-//     console.log(err);
-//   }
-// }
 
 function generateErrorMessage(message) {
   return {
