@@ -74,7 +74,7 @@ exports.signUp = (req, res, next) => {
   }
   if (passwordStrengthTested !== "fort") {
     return res.status(422).json({
-      message:
+      error:
         "Votre password doit contenir une majuscule un caractère spéciale, un chiffre et au minimum 10 caractères car votre passord est " +
         passwordStrengthTested,
     });
@@ -134,23 +134,22 @@ exports.login = (req, res, next) => {
     .then(function(userFound) {
       if (userFound) {
         console.log(userFound.id, "HEY");
+        console.log(userFound.username, 'USERNAME FOUNDED');
         //Bycrypt compare le password de la requete à celui sâlé en bdd avec la même clé
         bcrypt.compare(password, userFound.password, (err, resBcrypt) => {
-          console.log("VERIFI MDP");
-          console.log(password, "------", userFound.password);
-          console.log(resBcrypt, "BYCRYP");
           if (resBcrypt) {
             return res.status(200).json({
               userId: userFound.id,
               is_admin: userFound.is_admin,
+              username: userFound.username,
               token: jwt.sign({ user_id: userFound.id }, process.env.DB_SECRET, { expiresIn: "24h" }, { is_admin: userFound.is_admin }),
             });
           } else {
-            return res.status(404).json({ erreur: "Le mot de passe de l'utilisateur n'est pas décrypté" });
+            return res.status(404).json({ error: "Mot de passe incorrect" });
           }
         });
       } else {
-        return res.status(404).json({ error: "L'utilisateur n'existe pas en base de donnée" });
+        return res.status(404).json({ error: "Email incorrect" });
       }
     })
     .catch(function(err) {
@@ -210,7 +209,8 @@ exports.deleteUserProfile = async (req, res, next) => {
 
   //Récupération du userId
   const user = getUserFromToken(req);
-
+  const postId = req.params.id;
+  console.log(postId, 'POST ID');
   //get user
   async function getUserFromApi() {
     return models.User.findOne({

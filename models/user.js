@@ -9,8 +9,31 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      this.posts = models.User.hasMany(models.Post, { as: "posts", foreignKey: "userId" });
-      this.like = models.User.hasMany(models.UserLikes, { as: "likes", foreignKey: "userId" });
+      this.posts = models.User.hasMany(models.Post, {
+        as: "posts",
+        foreignKey: "userId",
+        onDelete: "cascade",
+        hooks: true
+      });
+      this.like = models.User.hasMany(models.UserLikes, {
+        as: "likes",
+        foreignKey: "userId",
+        onDelete: "cascade",
+        hooks: true
+      });
+      this.dislike = models.User.hasMany(models.UserDislikes, {
+        as: "dislikes",
+        foreignKey: "userId",
+        onDelete: "cascade",
+        hooks: true
+      });
+      this.comment = models.User.hasMany(models.Comment, {
+        as: "comment",
+        foreignKey: "userId",
+        onDelete: "cascade",
+        hooks: true
+      });
+     
     }
   }
   User.init(
@@ -20,7 +43,7 @@ module.exports = (sequelize, DataTypes) => {
       password: DataTypes.STRING,
       bio: DataTypes.STRING,
       is_admin: DataTypes.BOOLEAN,
-      attachement: DataTypes.STRING
+      attachement: DataTypes.STRING,
     },
     {
       sequelize,
