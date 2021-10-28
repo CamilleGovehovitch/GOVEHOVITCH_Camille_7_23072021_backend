@@ -1,8 +1,6 @@
 const express = require("express");
 const path = require("path");
 
-// const bodyParser = require("body-parser");
-
 //Appel des variables d'environnement
 const dotEnv = require("dotenv").config();
 
@@ -13,15 +11,14 @@ const multer = require("multer");
 const helmet = require("helmet");
 
 //ROUTES
-const postsRoutes = require("./routes/postsRoutes");
 const userRoutes = require("./routes/userRoutes");
-// const responsesRoutes = require('./routes/responsesRoutes');
+const postsRoutes = require("./routes/postsRoutes");
+const commentRoutes = require("./routes/commentRoutes");
 
 //Application express
 const app = express();
-app.use(express.json());
-// app.use(express.urlencoded());
 
+app.use(express.json());
 
 //Helmet sécurisation
 app.use(helmet());
@@ -29,22 +26,15 @@ app.use(helmet());
 // securisation avec les autorisation d'en tete
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content, Accept, Content-Type, Authorization"
-  );
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, PATCH, OPTIONS"
-  );
+  res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content, Accept, Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
   next();
 });
-
 
 app.use("/images", express.static(path.join(__dirname, "images")));
 app.use("/api/user", userRoutes);
 app.use("/api/post", postsRoutes);
-// app.use('api/responses', responsesRoutes);
+app.use('/api/comment', commentRoutes);
 
 module.exports = app;
 

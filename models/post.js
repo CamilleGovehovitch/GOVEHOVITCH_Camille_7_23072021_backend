@@ -10,29 +10,34 @@ module.exports = (sequelize, DataTypes) => {
 
     static associate(models) {
       // define association here
-      // models.Post.belongsTo(models.Post, {
-      //   foreignKey: {
-      //     allowNull: true,
-      //   }, 
-      // });
       this.user = models.Post.belongsTo(models.User, {
-        foreignKey: 'userId',
-        as: 'user'
+        foreignKey: "userId",
+        as: "user",
       });
       this.likes = models.Post.hasMany(models.UserLikes, {
-        foreignKey: 'postId',
-        as: 'likes'
+        foreignKey: "postId",
+        as: "likes",
+        onDelete: "cascade",
+        hooks: true,
       });
       this.dislikes = models.Post.hasMany(models.UserDislikes, {
-        foreignKey: 'postId',
-        as: 'dislikes'
+        foreignKey: "postId",
+        as: "dislikes",
+        onDelete: "cascade",
+        hooks: true,
+      });
+      this.comment = models.Post.hasMany(models.Comment, {
+        as: "comment",
+        foreignKey: "postId",
+        onDelete: "cascade",
+        hooks: true,
       });
     }
   }
   Post.init(
     {
       title: DataTypes.STRING,
-      content: DataTypes.STRING,
+      content: DataTypes.TEXT,
       attachement: DataTypes.STRING,
     },
     {
