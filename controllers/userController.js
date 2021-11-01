@@ -69,7 +69,6 @@ exports.signUp = (req, res, next) => {
     return res.status(400).json({ error: "Missing Parameters" });
   }
   if (!email.match(emailRegex)) {
-    console.log("err");
     return res.status(400).json({ error: "Votre email n'a pas la forme requise" });
   }
   if (passwordStrengthTested !== "fort") {
@@ -116,9 +115,6 @@ exports.signUp = (req, res, next) => {
 
 //Login
 exports.login = (req, res, next) => {
-  console.log("hey route login");
-  console.log(req.body, "BODY REQ");
-
   const userEmailMasked = Maskdata.maskEmail2(req.body.email, emailMask2Options);
 
   let email = req.body.email;
@@ -133,8 +129,6 @@ exports.login = (req, res, next) => {
   })
     .then(function(userFound) {
       if (userFound) {
-        console.log(userFound.id, "HEY");
-        console.log(userFound.username, 'USERNAME FOUNDED');
         //Bycrypt compare le password de la requete à celui sâlé en bdd avec la même clé
         bcrypt.compare(password, userFound.password, (err, resBcrypt) => {
           if (resBcrypt) {
@@ -171,9 +165,6 @@ exports.editProfile = (req, res, next) => {
   delete body.createdAt;
   delete body.updatedAt;
 
-  // const attachement = `${req.protocol}://${req.get("host")}/images/${req.file.filename}`;
-  console.log(req.file);
-
   //Récupération du userId
   const user = getUserFromToken(req);
 
@@ -182,7 +173,6 @@ exports.editProfile = (req, res, next) => {
     where: { id: user.user_id },
   })
     .then((userFound) => {
-      console.log(userFound, "USER FOUNDED");
       userFound
         .update({
           username: username ? username : userFound.username,
@@ -190,10 +180,10 @@ exports.editProfile = (req, res, next) => {
           attachement: req.file ? `${req.protocol}://${req.get("host")}/images/${req.file.filename}` : userFound.attachement,
         })
         .then(() => {
-          console.log(userFound);
           return res.status(201).json(userFound);
         })
         .catch((error) => {
+          console.log(error);
           return res.status(500).json({ error: "L'utilisateur n'a pu être mis à jour" });
         });
     })
@@ -205,12 +195,11 @@ exports.editProfile = (req, res, next) => {
 
 //Delete user
 exports.deleteUserProfile = async (req, res, next) => {
-  console.log("hello delete routes");
 
   //Récupération du userId
   const user = getUserFromToken(req);
   const postId = req.params.id;
-  console.log(postId, 'POST ID');
+  console.log(postId, "POST ID");
   //get user
   async function getUserFromApi() {
     return models.User.findOne({
@@ -242,10 +231,10 @@ exports.deleteUserProfile = async (req, res, next) => {
 
   if (userFounded) {
     try {
-      const likeMaped = likes.map(like => like.destroy());
-      const dislikeMaped = dislikes.map(dislike => dislike.destroy());
-      const postMaped = userPostsFounded.map(post => post.destroy());
-      
+      const likeMaped = likes.map((like) => like.destroy());
+      const dislikeMaped = dislikes.map((dislike) => dislike.destroy());
+      const postMaped = userPostsFounded.map((post) => post.destroy());
+
       userFounded.destroy();
       return res.status(200).json({ message: "Suppression de l'utilisateur et de ses posts réussie" });
     } catch (error) {
@@ -257,20 +246,23 @@ exports.deleteUserProfile = async (req, res, next) => {
 
 //get user via le token et non pas l'id
 exports.getUserProfile = (req, res, next) => {
-  console.log("hello get user routes");
   //Récupération du userId
-  const user = getUserFromToken(req);
-  models.User.findOne({
-    attributes: ["id", "email", "username", "bio", "createdAt", "updatedAt", "is_admin", "attachement"],
-    where: { id: user.user_id },
-  })
-    .then((userFound) => {
-      return res.status(200).json(userFound);
+  try {
+    const user = getUserFromToken(req);
+    models.User.findOne({
+      attributes: ["id", "email", "username", "bio", "createdAt", "updatedAt", "is_admin", "attachement"],
+      where: { id: user.user_id },
     })
-    .catch((error) => {
-      console.log(error);
-      return res.status(404).json(generateErrorMessage("L'utilisateur n'a pas été trouvé"));
-    });
+      .then((userFound) => {
+        return res.status(200).json(userFound);
+      })
+      .catch((error) => {
+        console.log(error);
+        return res.status(404).json(generateErrorMessage("L'utilisateur n'a pas été trouvé"));
+      });
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 function generateErrorMessage(message) {
