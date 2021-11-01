@@ -15,7 +15,6 @@ const USER_NOT_FOUND = "Utilisateur non trouvé";
 
 //Get post
 exports.getPost = (req, res, next) => {
-  console.log("GET ONE POST");
   const postId = req.params.id;
 
   models.Post.findOne({
@@ -45,7 +44,6 @@ exports.createPost = (req, res, next) => {
 
   //Const Limit
   const TITLE_LIMIT = 2;
-  const CONTENT_LIMIT = 4;
 
   //Récupération du userId
   const userId = getUserFromToken(req);
@@ -56,12 +54,6 @@ exports.createPost = (req, res, next) => {
   }
   if (title.length <= TITLE_LIMIT) {
     return res.status(400).json(generateErrorMessage("Le titre ne peut être inférieur à 2 charactères"));
-  }
-  if (content === null) {
-    return res.status(400).json(generateErrorMessage("Le content ne peut être vide"));
-  }
-  if (content.length <= CONTENT_LIMIT) {
-    return res.status(400).json(generateErrorMessage("Le contenu ne peut être inférieur à 4 charactères"));
   }
 
   models.User.findOne({
@@ -137,29 +129,12 @@ exports.deletePost = async (req, res, next) => {
     return res.status(401).json(generateErrorMessage("Vous n'êtes pas autorisé à supprimer ce post"));
   }
   try {
-    // if (likesFounded) {
-    //   const likesMaped = likesFounded.map((like) => {
-    //     like.destroy();
-    //   });
-    // }
-    // if (dislikesFounded) {
-    //   const dislikesMaped = dislikesFounded.map((dislike) => {
-    //     dislike.destroy();
-    //   });
-    // }
-    // if (commentFounded) {
-    //   const commentMapped = commentFounded.map((comment) => {
-    //     console.log(comment);
-    //     comment.destroy();
-    //   });
-    // }
-    if (postFounded) {
-      // const postMaped = postFounded.map((post) => {
-      //   post.destroy();
-      // });
-      postFounded.destroy();
+      if (postFounded) {
+      await postFounded.destroy();
+      return res.status(200).json({ message: "Suppression du post réussie" });
+    } else {
+      return res.status(404).json(generateErrorMessage('Le post n\'a pas été trouvé'));
     }
-    return res.status(200).json({ message: "Suppression du post réussie" });
   } catch (error) {
     return res.status(400).json(generateErrorMessage("Une erreur est survenue"));
   }
